@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>靈感滑滑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-screen app — search bar, a single card stack, action row, saved drawer */
+:root{
+  --bg:#FBF7F9; --surface:#FFFFFF; --fg:#22171F; --muted:#7D6A76; --line:#EADFE5;
+  --accent:#E2336B; --nope:#5B6B7A;
+  --display:"Bricolage Grotesque","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#17121A; --surface:#221B25; --fg:#F4EDF2; --muted:#A795A2; --line:#352B38;
+  --accent:#FF5A8A; --nope:#93A3B3; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);
+  display:flex;flex-direction:column;overflow:hidden;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;align-items:center;justify-content:space-between;padding-block:12px 8px;gap:12px}
+h1{font-family:var(--display);font-weight:800;font-size:1.35rem;margin:0;letter-spacing:-.01em}
+h1 span{color:var(--accent)}
+.savedBtn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;
+  padding:7px 14px;font:500 .9rem var(--body);cursor:pointer}
+.savedBtn b{color:var(--accent)}
+form{display:flex;gap:8px;padding-bottom:12px}
+input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  border-radius:14px;padding:12px 14px;font:16px var(--body);outline:none}
+input:focus{border-color:var(--accent)}
+form button{border:0;background:var(--fg);color:var(--bg);border-radius:14px;padding:0 18px;font:700 1rem var(--body);cursor:pointer}
+.stage{position:relative;flex:1;min-height:0;max-width:440px;width:100%;margin:0 auto}
+.card{position:absolute;inset:0;border-radius:22px;overflow:hidden;background:var(--surface);
+  box-shadow:0 10px 30px rgba(40,10,30,.18);touch-action:none;user-select:none;cursor:grab;will-change:transform}
+.card img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;background:var(--line)}
+.card .meta{position:absolute;left:0;right:0;bottom:0;padding:40px 16px 14px;color:#fff;
+  background:linear-gradient(transparent,rgba(0,0,0,.65));font-size:.85rem}
+.card .meta strong{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stamp{position:absolute;top:22px;padding:4px 12px;border:3px solid;border-radius:10px;
+  font:800 1.6rem var(--display);opacity:0;letter-spacing:.04em}
+.stamp.like{left:18px;color:#fff;border-color:#fff;background:var(--accent);transform:rotate(-12deg)}
+.stamp.nope{right:18px;color:#fff;border-color:#fff;background:var(--nope);transform:rotate(12deg)}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;color:var(--muted);gap:8px;padding:24px;border:2px dashed var(--line);border-radius:22px}
+.empty strong{color:var(--fg);font-size:1.05rem}
+.actions{display:flex;justify-content:center;gap:28px;padding-block:14px 16px}
+.actions button{width:62px;height:62px;border-radius:50%;border:0;background:var(--surface);
+  box-shadow:0 4px 14px rgba(40,10,30,.14);font-size:1.6rem;cursor:pointer;display:grid;place-items:center}
+.actions .no{color:var(--nope)} .actions .yes{color:var(--accent)}
+.actions button:focus-visible,.savedBtn:focus-visible,form button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.hint{text-align:center;color:var(--muted);font-size:.78rem;margin-top:-6px;padding-bottom:6px}
+.drawer{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:5;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) max(16px,env(safe-area-inset-left,0px))}
+.drawer header{position:sticky;top:0;background:var(--bg);z-index:1}
+.grid{columns:2 150px;column-gap:10px}
+.grid a{display:block;margin-bottom:10px;border-radius:14px;overflow:hidden;break-inside:avoid;position:relative}
+.grid img{width:100%;display:block;background:var(--line)}
+.grid .rm{position:absolute;top:6px;right:6px;border:0;border-radius:50%;width:28px;height:28px;
+  background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
+.small{color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){.card{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>靈感<span>滑滑</span></h1>
+  <button class="savedBtn" id="openSaved" type="button">收藏 <b id="savedCount">0</b></button>
+</header>
+<form id="search">
+  <input id="q" type="search" placeholder="輸入關鍵字，例如：極簡客廳" autocomplete="off" enterkeyhint="search">
+  <button type="submit">搜尋</button>
+</form>
+<div class="stage" id="stage">
+  <div class="empty" id="empty"><strong>輸入關鍵字開始滑</strong><span>右滑收藏、左滑跳過</span></div>
+</div>
+<div class="actions">
+  <button class="no" id="btnNo" type="button" aria-label="跳過">✕</button>
+  <button class="yes" id="btnYes" type="button" aria-label="收藏">♥</button>
+</div>
+<div class="hint">也可以用鍵盤 ← →</div>
+
+<div class="drawer" id="drawer" hidden>
+  <header><h1>我的<span>收藏</span></h1><button class="savedBtn" id="closeSaved" type="button">返回</button></header>
+  <p class="small" id="savedEmpty">還沒有收藏，右滑喜歡的圖就會出現在這裡。</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const API = "https://api.openverse.org/v1/images/";
+const $ = id => document.getElementById(id);
+const stage = $("stage"), empty = $("empty");
+let query = "", page = 1, queue = [], loading = false, exhausted = false;
+const seen = new Set();
+
+let saved = [];
+try { saved = JSON.parse(localStorage.getItem("swipe-saved") || "[]"); } catch {}
+function persist(){ try { localStorage.setItem("swipe-saved", JSON.stringify(saved)); } catch {} $("savedCount").textContent = saved.length; }
+persist();
+
+function setEmpty(title, sub){ empty.innerHTML = `<strong></strong><span></span>`; empty.firstChild.textContent = title; empty.lastChild.textContent = sub || ""; empty.hidden = false; }
+
+async function fetchMore(){
+  if (loading || exhausted || !query) return;
+  loading = true;
+  if (!stage.querySelector(".card")) setEmpty("載入中…", "正在找「" + query + "」的圖片");
+  try {
+    const r = await fetch(`${API}?q=${encodeURIComponent(query)}&page_size=20&page=${page}&mature=false`);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    const items = (data.results || []).filter(x => !seen.has(x.id));
+    items.forEach(x => seen.add(x.id));
+    queue.push(...items);
+    page++;
+    if (page > (data.page_count || 1)) exhausted = true;
+    render();
+    if (!queue.length && !stage.querySelector(".card")) setEmpty("找不到圖片", "換個關鍵字試試，英文關鍵字通常結果更多");
+  } catch (e) {
+    if (!stage.querySelector(".card")) setEmpty("連不上圖庫", "請確認網路，或稍後再試一次");
+  } finally { loading = false; }
+}
+
+function render(){
+  while (stage.querySelectorAll(".card").length < 3 && queue.length) addCard(queue.shift());
+  if (queue.length < 6) fetchMore();
+  empty.hidden = !!stage.querySelector(".card");
+  if (!stage.querySelector(".card") && exhausted && query) setEmpty("這組滑完了", "輸入新的關鍵字繼續");
+}
+
+function addCard(item){
+  const c = document.createElement("div");
+  c.className = "card";
+  c.innerHTML = `<img alt=""><div class="stamp like">喜歡</div><div class="stamp nope">跳過</div><div class="meta"><strong></strong><span></span></div>`;
+  const img = c.querySelector("img");
+  img.src = item.url;
+  img.onerror = () => { if (img.src !== item.thumbnail && item.thumbnail) img.src = item.thumbnail; else { c.remove(); render(); } };
+  img.alt = item.title || query;
+  c.querySelector("strong").textContent = item.title || query;
+  c.querySelector(".meta span").textContent = item.creator ? "by " + item.creator : "";
+  c._item = item;
+  stage.insertBefore(c, stage.querySelector(".card")); // new cards go underneath
+  enableDrag(c);
+}
+
+function topCard(){ const all = stage.querySelectorAll(".card"); return all[all.length - 1]; }
+
+function enableDrag(c){
+  let sx = 0, sy = 0, dx = 0, dy = 0, drag = false;
+  c.addEventListener("pointerdown", e => { if (c !== topCard()) return; drag = true; sx = e.clientX; sy = e.clientY; c.setPointerCapture(e.pointerId); c.style.transition = "none"; });
+  c.addEventListener("pointermove", e => {
+    if (!drag) return; dx = e.clientX - sx; dy = e.clientY - sy;
+    c.style.transform = `translate(${dx}px,${dy}px) rotate(${dx / 18}deg)`;
+    c.querySelector(".like").style.opacity = Math.max(0, Math.min(1, dx / 90));
+    c.querySelector(".nope").style.opacity = Math.max(0, Math.min(1, -dx / 90));
+  });
+  const end = () => {
+    if (!drag) return; drag = false;
+    if (Math.abs(dx) > 100) fling(c, dx > 0);
+    else { c.style.transition = "transform .25s"; c.style.transform = ""; c.querySelectorAll(".stamp").forEach(s => s.style.opacity = 0); }
+    dx = dy = 0;
+  };
+  c.addEventListener("pointerup", end); c.addEventListener("pointercancel", end);
+}
+
+function fling(c, like){
+  if (!c) return;
+  if (like && !saved.some(s => s.id === c._item.id)) {
+    const it = c._item;
+    saved.unshift({ id: it.id, url: it.url, thumb: it.thumbnail || it.url, link: it.foreign_landing_url || it.url, title: it.title || "" });
+    persist();
+  }
+  c.querySelector(like ? ".like" : ".nope").style.opacity = 1;
+  c.style.transition = "transform .35s ease-in";
+  c.style.transform = `translate(${like ? "140vw" : "-140vw"},-30px) rotate(${like ? 25 : -25}deg)`;
+  setTimeout(() => { c.remove(); render(); }, 300);
+}
+
+$("btnYes").onclick = () => fling(topCard(), true);
+$("btnNo").onclick = () => fling(topCard(), false);
+document.addEventListener("keydown", e => {
+  if (document.activeElement === $("q") || !$("drawer").hidden) return;
+  if (e.key === "ArrowRight") fling(topCard(), true);
+  if (e.key === "ArrowLeft") fling(topCard(), false);
+});
+
+$("search").addEventListener("submit", e => {
+  e.preventDefault();
+  const q = $("q").value.trim(); if (!q) return;
+  query = q; page = 1; queue = []; exhausted = false; seen.clear();
+  stage.querySelectorAll(".card").forEach(c => c.remove());
+  $("q").blur(); fetchMore();
+});
+
+function drawSaved(){
+  const g = $("grid"); g.innerHTML = "";
+  $("savedEmpty").hidden = saved.length > 0;
+  saved.forEach(s => {
+    const a = document.createElement("a");
+    a.href = s.link; a.target = "_blank"; a.rel = "noopener";
+    const img = document.createElement("img"); img.src = s.thumb; img.alt = s.title; img.loading = "lazy";
+    const rm = document.createElement("button"); rm.className = "rm"; rm.textContent = "✕"; rm.setAttribute("aria-label", "移除");
+    rm.onclick = ev => { ev.preventDefault(); saved = saved.filter(x => x.id !== s.id); persist(); drawSaved(); };
+    a.append(img, rm); g.append(a);
+  });
+}
+$("openSaved").onclick = () => { drawSaved(); $("drawer").hidden = false; };
+$("closeSaved").onclick = () => { $("drawer").hidden = true; };
+</script>
+</body>
+</html>
